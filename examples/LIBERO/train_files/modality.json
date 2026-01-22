@@ -31,7 +31,14 @@
         "gripper": {
             "start": 7,
             "end": 8
-        }
+        },
+        "joint_0": {"start": 8, "end": 9},
+        "joint_1": {"start": 9, "end": 10},
+        "joint_2": {"start": 10, "end": 11},
+        "joint_3": {"start": 11, "end": 12},
+        "joint_4": {"start": 12, "end": 13},
+        "joint_5": {"start": 13, "end": 14},
+        "joint_6": {"start": 14, "end": 15}
     },
     "action": {
         "x": {

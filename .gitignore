@@ -1,6 +1,9 @@
 debug/
 ckpts/
 third_party/
+logs/
+playground/
+results/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

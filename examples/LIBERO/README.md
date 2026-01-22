@@ -31,6 +31,21 @@ We provide a collection of pretrained checkpoints on Hugging Face to make commun
 | **Qwen3-VL-OFT**    | 30K   | 9.54   | 97.8    | 98.6   | 96.2 | 93.8  | 96.6  |
 | **Qwen3-VL-GR00T**  | 30K   | 9.54   | 97.8    | 98.8   | 97.4 | 92.0  | 96.5  |
 
+### My Experiments Results
+| Model               | Steps | Epochs | Spatial | Object | Goal | Long  | Avg   |
+|---------------------|-------|--------|---------|--------|------|-------|-------|
+| $\pi_0$+FAST | -     | -      | 96.4    | 96.8   | 88.6 | 60.2  | 85.5  |
+| OpenVLA-OFT | 175K  | 223    | 97.6    | 98.4   | 97.9 | 94.5  | 97.1  |
+| $\pi_0$             | -     | -      | 96.8    | 98.8   | 95.8 | 85.2  | 94.1  |
+| GR00T-N1.5 | 20K   | 203    | 92.0    | 92.0   | 86.0 | 76.0  | 86.5  |
+| **Qwen2.5-VL-FAST** | 30K   | 9.54   | 97.3    | 97.2   | 96.1 | 90.2  | 95.2  |
+| **Qwen2.5-VL-OFT**  | 30K   | 9.54   | 97.4    | 98.0   | 96.8 | 92.0  | 96.1  |
+| **Qwen2.5-VL-GR00T**| 30K   | 9.54   | 97.8    | 98.2   | 94.6 | 90.8  | 95.4  |
+| **Qwen3-VL-FAST**   | 30K   | 9.54   | 97.3    | 97.4   | 96.3 | 90.6  | 95.4  |
+| **Qwen3-VL-OFT**    | 30K   | 9.54   | 97.8    | 98.6   | 96.2 | 93.8  | 96.6  |
+| **Qwen3-VL-GR00T**  | 30K   | 9.54   | 97.8    | 98.8   | 97.4 | 92.0  | 96.5  |
+| **My-Qwen3-VL-Pi**  | 100K   | -   | 92.2    | 98.2   | 97.2 | 94.2  | 95.5  |
+
 We train one policy for all 4 suites. All
 scores are averaged over 500 trials for each task suite (10 tasks × 50 episodes).
 

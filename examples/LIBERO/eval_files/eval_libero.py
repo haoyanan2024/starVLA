@@ -56,6 +56,14 @@ class Args:
 
 
 def eval_libero(args: Args) -> None:
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    if not root_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+        )
+        root_logger.addHandler(handler)
     logging.info(f"Arguments: {json.dumps(dataclasses.asdict(args), indent=4)}")
 
     # Set random seed
@@ -294,6 +302,7 @@ def start_debugpy_once():
     start_debugpy_once._started = True
 
 if __name__ == "__main__":
-    if os.getenv("DEBUG", False):
+    debug_flag = os.getenv("DEBUG", "").strip().lower()
+    if debug_flag in ("1", "true", "yes"):
         start_debugpy_once()
     tyro.cli(eval_libero)

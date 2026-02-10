@@ -26,6 +26,7 @@ See `scripts/load_dataset.py` for examples on how to use these datasets.
 import os
 import hashlib
 import json, torch
+from io import BytesIO
 from collections import defaultdict
 from pathlib import Path
 from typing import Sequence
@@ -337,16 +338,29 @@ class LeRobotSingleDataset(Dataset):
             if original_key is None:
                 original_key = new_key
             le_video_meta = le_info["features"][original_key]
-            height = le_video_meta["shape"][le_video_meta["names"].index("height")]
-            width = le_video_meta["shape"][le_video_meta["names"].index("width")]
-            # NOTE(FH): different lerobot dataset versions have different keys for the number of channels and fps
-            try:
-                channels = le_video_meta["shape"][le_video_meta["names"].index("channel")]
-                fps = le_video_meta["video_info"]["video.fps"]
-            except (ValueError, KeyError):
-                # channels = le_video_meta["shape"][le_video_meta["names"].index("channels")]
-                channels = le_video_meta["info"]["video.channels"]
-                fps = le_video_meta["info"]["video.fps"]
+            names = le_video_meta.get("names", []) or []
+            shape = le_video_meta.get("shape", []) or []
+
+            height = shape[names.index("height")]
+            width = shape[names.index("width")]
+
+            # Support both LeRobot v2 and v3 metadata conventions.
+            if "channel" in names:
+                channels = shape[names.index("channel")]
+            elif "channels" in names:
+                channels = shape[names.index("channels")]
+            elif len(shape) >= 3:
+                channels = shape[-1]
+            else:
+                channels = 3
+
+            fps = (
+                le_video_meta.get("video_info", {}).get("video.fps")
+                or le_video_meta.get("info", {}).get("video.fps")
+                or le_info.get("fps")
+            )
+            if fps is None:
+                raise KeyError(f"Cannot find video fps for key `{original_key}` in {le_info_path}")
             simplified_modality_meta["video"][new_key] = {
                 "resolution": [width, height],
                 "channels": channels,
@@ -459,11 +473,20 @@ class LeRobotSingleDataset(Dataset):
                     trajectory_lengths.append(episode["length"])
 
                     # TODO auto map key? just map to file_path and file_from_index
+                    from_timestamp = None
+                    for ts_key in (
+                        "videos/observation.images.wrist/from_timestamp",
+                        "videos/wrist_image/from_timestamp",
+                        "videos/image/from_timestamp",
+                    ):
+                        if ts_key in episode.index:
+                            from_timestamp = episode[ts_key]
+                            break
                     episode_meta = {
                         "data/chunk_index": episode["data/chunk_index"],
                         "data/file_index": episode["data/file_index"],
                         "data/file_from_index": index,
-                        "videos/observation.images.wrist/from_timestamp": episode["videos/observation.images.wrist/from_timestamp"],
+                        "video/from_timestamp": from_timestamp,
                     }
                     self.trajectory_ids_to_metadata[trajectory_ids[-1]] = episode_meta
 
@@ -868,7 +891,10 @@ class LeRobotSingleDataset(Dataset):
                     episode_chunk=chunk_index, episode_index=trajectory_id
                 )
                 assert parquet_path.exists(), f"Parquet file not found at {parquet_path}"
-                return pd.read_parquet(parquet_path)
+                traj_data = pd.read_parquet(parquet_path)
+                self.curr_traj_id = trajectory_id
+                self.curr_traj_data = traj_data
+                return traj_data
         elif self._lerobot_version == "v3.0":
             return self.get_trajectory_data_lerobot_v3(trajectory_id)
     
@@ -893,8 +919,11 @@ class LeRobotSingleDataset(Dataset):
             episode_data = file_data.loc[file_data["episode_index"] == trajectory_id].copy()
             
             # fix timestamp from epis index to file index
-            from_timestamp = self.trajectory_ids_to_metadata[trajectory_id]["videos/observation.images.wrist/from_timestamp"]
-            episode_data["timestamp"] = episode_data["timestamp"] + from_timestamp  
+            from_timestamp = self.trajectory_ids_to_metadata[trajectory_id].get("video/from_timestamp", None)
+            if from_timestamp is not None and "timestamp" in episode_data.columns:
+                episode_data["timestamp"] = episode_data["timestamp"] + from_timestamp  
+            self.curr_traj_id = trajectory_id
+            self.curr_traj_data = episode_data
             
             return episode_data
 
@@ -1024,7 +1053,40 @@ class LeRobotSingleDataset(Dataset):
         assert key.startswith("video."), f"Video key must start with 'video.', got {key}"
         # Get the sub-key
         key = key.replace("video.", "")
+        original_key = self.lerobot_modality_meta.video[key].original_key
+        if original_key is None:
+            original_key = key
         video_path = self.get_video_path(trajectory_id, key)
+
+        # Some LeRobot v3 datasets store images directly in parquet rows and do not materialize mp4 files.
+        # Fallback to decoding image bytes / paths from parquet in that case.
+        if not video_path.exists():
+            assert self.curr_traj_data is not None, f"No data found for {trajectory_id=}"
+            if original_key not in self.curr_traj_data.columns:
+                raise FileNotFoundError(
+                    f"Video file not found: {video_path}, and parquet column `{original_key}` is missing."
+                )
+            image_cells = self.curr_traj_data[original_key].to_numpy()
+            frames = []
+            for idx in step_indices:
+                cell = image_cells[idx]
+                frame = None
+                if isinstance(cell, dict):
+                    raw_bytes = cell.get("bytes", None)
+                    if raw_bytes:
+                        frame = np.array(Image.open(BytesIO(raw_bytes)).convert("RGB"))
+                    elif cell.get("path", None):
+                        img_path = self.dataset_path / cell["path"]
+                        frame = np.array(Image.open(img_path).convert("RGB"))
+                elif isinstance(cell, np.ndarray):
+                    frame = cell
+                if frame is None:
+                    raise ValueError(
+                        f"Unable to decode frame for key `{original_key}` at index {idx}. Cell type: {type(cell)}"
+                    )
+                frames.append(frame)
+            return np.stack(frames, axis=0)
+
         # Get the action/state timestamps for each frame in the video
         assert self.curr_traj_data is not None, f"No data found for {trajectory_id=}"
         assert "timestamp" in self.curr_traj_data.columns, f"No timestamp found in {trajectory_id=}"
@@ -1681,14 +1743,21 @@ class LeRobotMixtureDataset(Dataset):
         
         for attempt in range(max_retries):
             try:
-                while True: # @DUG
+                for _ in range(50):
                     dataset, trajectory_id, step = self.sample_step(index)
                     key = dataset.modality_keys["video"][0].replace("video.", "")
                     video_path = dataset.get_video_path(trajectory_id, key)
-                    if os.path.exists(video_path):
+                    # For LeRobot v3 parquet-image datasets, mp4 files may not exist.
+                    # In that case get_video() will fallback to parquet image bytes/paths.
+                    if os.path.exists(video_path) or dataset._lerobot_version == "v3.0":
                         break
                     index = random.randint(0, len(self) - 1)
-                    
+                else:
+                    raise FileNotFoundError(
+                        f"Unable to find valid sample with existing video path after retries. "
+                        f"Last tried path: {video_path}"
+                    )
+
                 raw_data = dataset.get_step_data(trajectory_id, step)    
                 data = dataset.transforms(raw_data)
                 
@@ -2220,5 +2289,3 @@ class LeRobotMixtureDataset(Dataset):
                 dataset.set_transforms_metadata(self.merged_metadata[dataset.tag])
         
         print(f"Applied cached statistics for {len(self.merged_metadata)} embodiment tags.")
-
-

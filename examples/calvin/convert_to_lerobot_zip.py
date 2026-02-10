@@ -26,10 +26,10 @@ from typing import Literal
 import tyro
 import numpy as np
 # from lerobot.common.datasets.lerobot_dataset import HF_LEROBOT_HOME as LEROBOT_HOME
-# from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
-from lerobot.datasets.lerobot_dataset import LeRobotDataset
+from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
+# from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
-LEROBOT_HOME = Path("/mnt/data/datasets/lerobot")
+LEROBOT_HOME = Path("/nfs1/hyn/lerobot")
 
 @dataclass(frozen=True)
 class Args:

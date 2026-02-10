@@ -327,6 +327,7 @@ class VLATrainer(TrainerUtils):
         """execute training loop"""
         # print training config
         self._log_training_config()
+        debug_timing_steps = int(getattr(self.config.trainer, "debug_timing_steps", 20))
 
         # prepare data iterators
         self._create_data_iterators()
@@ -339,14 +340,26 @@ class VLATrainer(TrainerUtils):
         # main training loop
         while self.completed_steps < self.config.trainer.max_train_steps:
             # get data batch
+            if self.accelerator.is_main_process and self.completed_steps < debug_timing_steps:
+                logger.info(f"[debug-timing] step={self.completed_steps} start fetching batch")
             t_start_data = time.perf_counter()
             batch_vla = self._get_next_batch()
             t_end_data = time.perf_counter()
+            if self.accelerator.is_main_process and self.completed_steps < debug_timing_steps:
+                logger.info(
+                    f"[debug-timing] step={self.completed_steps} fetched batch in {t_end_data - t_start_data:.3f}s"
+                )
 
             # execute training step
+            if self.accelerator.is_main_process and self.completed_steps < debug_timing_steps:
+                logger.info(f"[debug-timing] step={self.completed_steps} start model step")
             t_start_model = time.perf_counter()
             step_metrics = self._train_step(batch_vla)
             t_end_model = time.perf_counter()
+            if self.accelerator.is_main_process and self.completed_steps < debug_timing_steps:
+                logger.info(
+                    f"[debug-timing] step={self.completed_steps} model step in {t_end_model - t_start_model:.3f}s"
+                )
 
             # update progress
             if self.accelerator.sync_gradients:
@@ -368,6 +381,10 @@ class VLATrainer(TrainerUtils):
             # record metrics
             step_metrics["data_time"] = t_end_data - t_start_data
             step_metrics["model_time"] = t_end_model - t_start_model
+            if self.accelerator.is_main_process and self.completed_steps < debug_timing_steps:
+                logger.info(
+                    f"[debug-timing] step={self.completed_steps} summary data_time={step_metrics['data_time']:.3f}s model_time={step_metrics['model_time']:.3f}s"
+                )
             self._log_metrics(step_metrics)
 
             # save checkpoint

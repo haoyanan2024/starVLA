@@ -43,15 +43,16 @@ class WebsocketClientPolicy:
             
             try:
                 headers = {"Authorization": f"Api-Key {self._api_key}"} if self._api_key else None
-                conn = websockets.sync.client.connect(
-                    self._uri,
-                    compression=None,
-                    max_size=None,
-                    additional_headers=headers,
-                    open_timeout=150,
-                    ping_interval=20,
-                    ping_timeout=20,
-                )
+                # conn = websockets.sync.client.connect(
+                #     self._uri,
+                #     compression=None,
+                #     max_size=None,
+                #     additional_headers=headers,
+                #     open_timeout=150,
+                #     ping_interval=20,
+                #     ping_timeout=20,
+                # )
+                conn = websockets.sync.client.connect(self._uri)
                 metadata = msgpack_numpy.unpackb(conn.recv())
                 return conn, metadata
             except ConnectionRefusedError:

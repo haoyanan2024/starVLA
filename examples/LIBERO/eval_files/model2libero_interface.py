@@ -8,7 +8,7 @@ import numpy as np
 from deployment.model_server.tools.websocket_policy_client import WebsocketClientPolicy
 
 from examples.SimplerEnv.eval_files.adaptive_ensemble import AdaptiveEnsembler
-from typing import Dict
+from typing import Dict, List, Tuple
 import numpy as np
 from pathlib import Path
 from PIL import Image
@@ -25,7 +25,7 @@ class ModelClient:
         horizon: int = 0,
         action_ensemble = True,
         action_ensemble_horizon: Optional[int] = 3, # different cross sim
-        image_size: list[int] = [224, 224],
+        image_size: List[int] = [224, 224],
         use_ddim: bool = True,
         num_ddim_steps: int = 10,
         adaptive_ensemble_alpha = 0.1,
@@ -85,7 +85,7 @@ class ModelClient:
         example: dict,
         step: int = 0,
         **kwargs
-    ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
+    ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """
         Perform one step of inference
         :param image: Input image in the format (H, W, 3), type uint8

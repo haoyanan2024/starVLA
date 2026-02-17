@@ -72,8 +72,8 @@ class Args:
     # Calvin environment-specific parameters
     #################################################################################################################
     dataset_path: str = "/path/to/calvin/task_D_D"  # Path to Calvin dataset
-    calvin_config_path: str = "/path/to/calvin/calvin_models/conf"
-    eval_sequences_path: str = "/path/to/calvin/eval_sequences.json"
+    calvin_config_path: str = "/home/user/hyn/calvin/calvin_models/conf"
+    eval_sequences_path: str = "/home/user/hyn/starVLA/examples/calvin/eval_files/eval_sequences.json"
     num_sequences: int = 1000  # Number of evaluation sequences
     num_workers: int = 1  # For future multi-process support
     seed: int = 0

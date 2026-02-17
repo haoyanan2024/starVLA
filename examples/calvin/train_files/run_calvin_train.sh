@@ -1,5 +1,6 @@
 # export CUDA_VISIBLE_DEVICES=0
-export CUDA_VISIBLE_DEVICES=0,1,2,3
+# export CUDA_VISIBLE_DEVICES=0,1,2,3
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
 # export NCCL_SOCKET_IFNAME=bond0
 # export NCCL_IB_HCA=mlx5_2,mlx5_3
@@ -11,15 +12,18 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3
 # export NCCL_SOCKET_TIMEOUT_MS=360000
 ###########################################################################################
 # === Please modify the following paths according to your environment ===
-Framework_name=QwenGR00T
+# Framework_name=QwenGR00T
+Framework_name=QwenPI
 freeze_module_list=''
-base_vlm=StarVLA/Qwen3-VL-4B-Instruct-Action
+# base_vlm=StarVLA/Qwen3-VL-4B-Instruct-Action
+base_vlm=StarVLA/Qwen2.5-VL-3B-Instruct-Action
 config_yaml=./examples/calvin/train_files/starvla_train_calvin.yaml
 DIT_TYPE="DiT-B"
 calvin_data_root=~/.cache/huggingface/lerobot/calvin
 data_mix=calvin_task_D_D
 run_root_dir=./results/Checkpoints
-run_id=0209_starvla_qwengr00t_calvin_task_D_D
+# run_id=0209_starvla_qwengr00t_calvin_task_D_D
+run_id=0216_starvla_qwenpi_253B_calvin_task_D_D
 export action_input_dim=2048
 # === End of environment variable configuration ===
 ###########################################################################################
@@ -34,7 +38,7 @@ cp $0 ${output_dir}/
 
 accelerate launch \
   --config_file starVLA/config/deepseeds/deepspeed_zero2.yaml \
-  --num_processes 4 \
+  --num_processes 8 \
   starVLA/training/train_starvla.py \
   --config_yaml ${config_yaml} \
   --framework.name ${Framework_name} \
